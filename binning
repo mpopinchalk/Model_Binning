@@ -1,0 +1,52 @@
+from astrodbkit import astrodb
+
+ma_db = astrodb.Database('/Users/teacher/Desktop/Research/model_atmospheres.db')
+
+from matplotlib import pyplot as plt
+import numpy as np
+#from BDNYCdb import utilities as u
+from pylab import rcParams
+
+rcParams['figure.figsize'] = 8, 10
+
+
+def binmodels(model, teffmin, teffmax, logg, f_sed=False):
+    """plot all models from any specified model grid
+    model: a string of the name of the model grid
+    """
+    k = 0  # used to shift models up to fit multiple in one plot
+    models = ma_db.list("select * from {} where logg={} and teff between {} and {}".format(model, logg, teffmin, teffmax)).fetchall()# This pulls out all of the temps at one specific gravity
+    k = k+1
+    for g in models:#each model
+        teff, w, f = g[1], g[4], g[5]#pulling out the variables
+        numb = 10 #resolution? need a better term
+        pre = len(f)
+        post = np.ceil(pre/numb) #new number of bins
+        binf = [0]*post
+        binw = [0]*post
+        for n in range(0,int(post)): #start handling the data, numb values at a time
+            s = n*numb
+            sumf = [0]
+            sumw = [0]
+            x = 1
+            for t in range(s,s+numb-1):#take numb values and add them
+                if t > (pre-1):
+                    break
+                else:
+                    x = x+1
+                    sumf = sumf + f[t]
+                    sumw = sumw + w[t]
+            meanf = sumf/x #average those values
+            meanw = sumw/x
+            binf[n] = meanf #new averaged value for that bin added to array for graphing
+            binw[n] = meanw
+
+        binf = binf / max(binf)  # normalizes flux
+        print(binf,binw)
+        plt.plot(binw, binf + k)  # remove k since not shifting to fit multiple on one plot
+        plt.annotate(teff, xy=(2.37, k), annotation_clip=False)  # legend in any spot aka text box, could switch to legend
+        k = k+1
+        plt.xlim(1.9, 2.5) # shows xrange
+        yl = plt.ylabel('Normalized Fux + constant')
+        xl = plt.xlabel('Wavelength (microns)')
+
